@@ -1,0 +1,78 @@
+version: '3'
+
+services:
+  # router
+  traefik:
+    image: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./traefik.toml:/etc/traefik/traefik.toml
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # sample app
+  whoami:
+    image: containous/whoami
+    labels:
+      - "traefik.frontend.rule=Host:whoami.docker.localhost"
+
+  nodeapp:
+    build:
+      context: ./node-app
+      dockerfile: Dockerfile
+      args:
+        PROJECT_DIR: "/var/www"
+    ports:
+      - 3002:6001
+    labels:
+      - "traefik.frontend.rule=Host:nodeapp.docker.localhost"
+    depends_on:
+      - influxsrx
+
+  cadvisor:
+    image: google/cadvisor:latest
+    command: -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxsrx:8086 -storage_driver_user=admin -storage_driver_password=admin
+    ports:
+      - 8081:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    labels:
+      - "traefik.frontend.rule=Host:cadvisor.docker.localhost"
+    depends_on:
+      - influxsrx
+
+  influxsrx:
+    image: influxdb
+    ports:
+      - 8086:8086
+    volumes:
+      - influxdb-storage:/var/lib/influxdb
+    env_file:
+      - .env
+    labels:
+      - "traefik.frontend.rule=Host:influxsrx.docker.localhost"
+
+  # dashboard
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - influxsrx
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    env_file:
+      - .env
+    labels:
+      - "traefik.frontend.rule=Host:grafana.docker.localhost"
+
+
+volumes:
+  grafana-storage:
+  influxdb-storage:

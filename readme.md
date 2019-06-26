@@ -1,0 +1,1 @@
+cadvisor [dashboard](https://grafana.com/dashboards/4637) import

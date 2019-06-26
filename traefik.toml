@@ -1,0 +1,9 @@
+logLevel = "DEBUG"
+
+[file]
+watch = true
+
+[docker]
+
+[api]
+    dashboard = true
